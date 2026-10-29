@@ -4,6 +4,8 @@ An assignment redesign of Migsak's homepage. [Live demo](https://migsak-redesign
 
 Next.js App Router, React, Tailwind CSS and PostgreSQL, through either Supabase or a direct connection. The homepage includes a keyboard-accessible phase planner and an enquiry form. `/admin` shows stored enquiries after password authentication.
 
+The deployed assignment uses an account-owned Neon project on the Free plan. Ownership was transferred on 29 October 2026, removing the initial temporary database expiry. Provider plan limits still apply. Database credentials remain server-only Vercel environment variables; the admin password is shared privately with the evaluator.
+
 The page paraphrases services and projects from [Migsak's website](https://www.migsak.com/). It does not add testimonials, client counts or performance claims. Planner output is an indicative starting point; timing and pricing require scoping.
 
 ## Local setup
@@ -38,7 +40,7 @@ Create a **fresh Supabase project**, open its SQL Editor, and run `supabase/sche
 
 For a provider such as Neon, run `postgres/schema.sql` once as the database owner. It creates a `migsak_app` role with only enquiry SELECT/INSERT and rate-limit function EXECUTE privileges. Create a separate, randomly passworded `LOGIN` role through SQL with `NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`, then grant it `migsak_app`. Use that restricted login's TLS connection string as `DATABASE_URL`; keep the owner credential out of the deployed app. Verify a fresh connection can insert/select enquiries and execute the limiter, while DELETE, schema creation and private-counter reads are denied.
 
-When `DATABASE_URL` is populated, the server uses this connection instead of Supabase; the Supabase variables can be omitted. `APP_ORIGIN`, `ADMIN_PASSWORD` and `SESSION_SECRET` remain required. The pool uses at most two connections per server process, verified TLS, and ten-second connection/query/statement timeouts. Temporary databases must be claimed before their provider's expiry; they are not permanent storage until claimed. After claiming, recheck the restricted login and update the deployment's connection string if the provider rotates credentials.
+When `DATABASE_URL` is populated, the server uses this connection instead of Supabase; the Supabase variables can be omitted. `APP_ORIGIN`, `ADMIN_PASSWORD` and `SESSION_SECRET` remain required. The pool uses at most two connections per server process, verified TLS, and ten-second connection/query/statement timeouts. Use an account-owned database for a deployment that must remain available. If a provider rotates credentials during an ownership transfer, update `DATABASE_URL`, redeploy, and verify the restricted login and live form-to-admin flow.
 
 Start the app:
 
@@ -119,7 +121,7 @@ After configuring a real Supabase project, verify the deployed path manually:
 
 1. Push the source and lockfile to a Git repository, keeping `.env.local` excluded.
 2. Import the repository into Vercel and select the Next.js preset with a supported Node.js 22+ runtime.
-3. Add all five variables in the appropriate Production/Preview environments. Use HTTPS for deployed origins.
+3. Add the required variables in the appropriate Production/Preview environments: `APP_ORIGIN`, `ADMIN_PASSWORD` and `SESSION_SECRET`, plus either `DATABASE_URL` for direct PostgreSQL or `SUPABASE_URL` and `SUPABASE_SECRET_KEY` for Supabase. Use HTTPS for deployed origins.
 4. Deploy. If you only learn the canonical URL after deployment, set `APP_ORIGIN` and redeploy before testing forms or login.
 5. Complete the live form → database → admin verification above. Share the admin password privately with the evaluator, never in a public README or repository.
 
@@ -127,7 +129,7 @@ Vercel Hobby is for personal, noncommercial use; check the plan if this moves fr
 
 ## Explaining the implementation in an interview
 
-- **Small architecture:** one Next.js application handles the page, server endpoint and admin. Supabase supplies persistent Postgres storage; an ORM would add little for one submission table.
+- **Small architecture:** one Next.js application handles the page, server endpoint and admin. Neon supplies persistent PostgreSQL storage for the deployed assignment, with Supabase supported as an alternative; an ORM would add little for one submission table.
 - **Clear client/server boundary:** interactive planner state stays in a Client Component. Validation, secrets, persistence and admin authorization stay on the server.
 - **Two layers of validation:** Zod gives field-level errors; SQL constraints preserve basic data integrity even if application code changes.
 - **Reliable submission behaviour:** loading/error/success states are explicit, and idempotency protects retries without silently overwriting data.
